@@ -1,0 +1,39 @@
+ifeq ($(CROSS_COMPILE),)
+CROSS_COMPILE = /opt/gcc-ubuntu-9.3.0-2020.03-x86_64-aarch64-linux-gnu/bin/aarch64-linux-gnu-
+export LD_LIBRARY_PATH=/opt/gcc-ubuntu-9.3.0-2020.03-x86_64-aarch64-linux-gnu/lib/x86_64-linux-gnu
+endif
+
+ifeq ($(TARGET_MODE),)
+TARGET_MODE = release
+endif
+
+CC = ${CROSS_COMPILE}gcc
+CXX = ${CROSS_COMPILE}g++
+AR = ${CROSS_COMPILE}ar
+AS = ${CROSS_COMPILE}as
+LD = ${CROSS_COMPILE}ld
+STRIP = ${CROSS_COMPILE}strip
+RANLIB = ${CROSS_COMPILE}ranlib
+OBJCOPY = ${CROSS_COMPILE}objcopy
+OBJDUMP = ${CROSS_COMPILE}objdump
+READELF = ${CROSS_COMPILE}readelf
+NM = ${CROSS_COMPILE}nm
+
+CFLAGS = -Wall
+CXXFLAGS = -Wall
+CFLAGS_DYNAMIC = -fPIC -shared
+CFLAGS_STATIC = -rcs
+
+ifeq (${TARGET_MODE},debug)
+        CFLAGS += -g -O0
+        CXXFLAGS += -g -O0
+endif
+ifeq (${TARGET_MODE},release)
+        CFLAGS += -O2
+        CXXFLAGS += -O2
+endif
+
+LDFLAGS = -L../lib
+
+LDFLAGS += -Wl,-rpath-link=../lib
+

@@ -1,0 +1,21 @@
+{
+    "config_number":1,
+    "board_name":"x3dev",
+    "config_0":{
+        "interface_type": "mipi",
+        "port_number":1,
+        "port_0":{
+            "bus_type":0,
+            "bus_num":2,
+            "sensor_addr":"0x29",
+            "sensor_name":"gc4663",
+            "reg_width":16,
+            "sensor_mode":1,
+            "entry_num":0,
+            "fps":30,
+            "resolution":1440,
+            "dev_port":0,
+            "config_path":"hb_mipi_gc4663_raw10_%dfps_%dP.json"
+        }
+    }
+}
