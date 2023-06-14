@@ -11,11 +11,11 @@ echo 1 > /sys/class/gpio/gpio19/value
 echo 19 > /sys/class/gpio/unexport
 
 # enable sensor mclk
-echo 1 > /sys/class/vps/mipi_host0/param/snrclk_en
-echo 24000000 > /sys/class/vps/mipi_host0/param/snrclk_freq
+echo 1 > /sys/class/vps/mipi_host2/param/snrclk_en
+echo 24000000 > /sys/class/vps/mipi_host2/param/snrclk_freq
+echo 1 > /sys/class/vps/mipi_host2/param/stop_check_instart
 echo 1 > /sys/class/vps/mipi_host0/param/stop_check_instart
-# echo 1 > /sys/class/vps/mipi_host0/param/stop_check_instart
-# echo 1 > /sys/class/vps/mipi_host1/param/stop_check_instart
+echo 1 > /sys/class/vps/mipi_host1/param/stop_check_instart
 
 # i2cdetect -r -y 0
  i2cdetect -r -y 1
