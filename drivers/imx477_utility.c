@@ -17,12 +17,15 @@
 #include "inc/hb_cam_utility.h"
 #include "inc/imx477_setting.h"
 #include "inc/sensor_effect_common.h"
-#define IMX477_EXP_REG_ADDR 0x0202
+#define IMX477_EXP_REG_ADDR_HI 0x0202
+#define IMX477_FRM_LENGTH_HI 0x0340
+#define IMX477_FRM_LENGTH_LO 0x0341
 #define IMX477_AGAIN_REG_ADDR_HI 0x0204
 #define IMX477_AGAIN_REG_ADDR_LO 0x0205
 #define IMX477_DGAIN_REG_ADDR 0x020e
 #define MCLK (24000000)
 static int power_ref;
+int imx477_linear_data_init(sensor_info_t *sensor_info);
 int sensor_poweron(sensor_info_t *sensor_info)
 {
 	int gpio, ret = RET_OK;
@@ -149,8 +152,45 @@ int sensor_init(sensor_info_t *sensor_info)
 		}
 		// fixme:There is currently no function to set linear
 	}
+	else if (sensor_info->resolution == 960)
+	{
+		setting_size =
+			sizeof(imx477_990p_10fps_setting) / sizeof(uint32_t) / 2;
+		pr_debug("sensor_name %s, setting_size = %d\n",
+				 sensor_info->sensor_name, setting_size);
+		ret = camera_write_array(sensor_info->bus_num,
+								 sensor_info->sensor_addr, 2,
+								 setting_size, imx477_990p_10fps_setting);
+ 
+		if (ret < 0)
+		{
+			pr_debug("%d : init %s fail\n",
+					 __LINE__, sensor_info->sensor_name);
+			return ret;
+		}
+		// fixme:There is currently no function to set linear
+	}
+	else if (sensor_info->resolution == 1520)
+	{
+		setting_size =
+			sizeof(imx477_1520p_10fps_setting) / sizeof(uint32_t) / 2;
+		pr_debug("sensor_name %s, setting_size = %d\n",
+				 sensor_info->sensor_name, setting_size);
+		ret = camera_write_array(sensor_info->bus_num,
+								 sensor_info->sensor_addr, 2,
+								 setting_size, imx477_1520p_10fps_setting);
+
+		if (ret < 0)
+		{
+			pr_debug("%d : init %s fail\n",
+					 __LINE__, sensor_info->sensor_name);
+			return ret;
+		}
+		// fixme:There is currently no function to set linear
+	}
 	else
 	{
+		printf("sensor_info->resolution == %d\n", sensor_info->resolution);
 		pr_err("config mode is err\n");
 		return -RET_ERROR;
 	}
@@ -250,7 +290,7 @@ void imx477_common_data_init(sensor_info_t *sensor_info, sensor_turning_data_t *
 	strncpy(turning_data->sensor_name, sensor_info->sensor_name,
 			sizeof(turning_data->sensor_name));
 	// s_line means exposure related registers
-	turning_data->normal.s_line = IMX477_EXP_REG_ADDR;
+	turning_data->normal.s_line = IMX477_EXP_REG_ADDR_HI;
 	turning_data->normal.s_line_length = 2;
 
 	// aGain
@@ -259,22 +299,28 @@ void imx477_common_data_init(sensor_info_t *sensor_info, sensor_turning_data_t *
 	turning_data->normal.again_control_length[0] = 0;
 	// high register 2bits
 
-	// dGain ,ov5647 don't have dgain register
+	// dGain
 	turning_data->normal.dgain_control_num = 0;
 	turning_data->normal.dgain_control[0] = IMX477_DGAIN_REG_ADDR;
 	turning_data->normal.dgain_control_length[0] = 0;
 }
-void imx477_12MP_param_init(sensor_info_t *sensor_info, sensor_turning_data_t *turning_data)
+void imx477_param_init(sensor_info_t *sensor_info, sensor_turning_data_t *turning_data)
 {
-	uint32_t max_expo = 3092;
-	turning_data->sensor_data.active_width = 4000;
-	turning_data->sensor_data.active_height = 3000;
+
+	int vts_hi = hb_i2c_read_reg16_data8(sensor_info->bus_num, sensor_info->sensor_addr, IMX477_FRM_LENGTH_HI);
+	int vts_lo = hb_i2c_read_reg16_data8(sensor_info->bus_num, sensor_info->sensor_addr, IMX477_FRM_LENGTH_LO);
+	uint32_t vts = vts_hi;
+	vts = vts << 8 | vts_lo;
+	pr_err("vts_hi:0x%x,vts_lo:0x%x,vts:0x%x\n", vts_hi, vts_lo, vts);
+	uint32_t max_expo = vts;
+	turning_data->sensor_data.active_width = sensor_info->width;
+	turning_data->sensor_data.active_height = sensor_info->height;
 	turning_data->sensor_data.turning_type = 6;
 	turning_data->sensor_data.fps = sensor_info->fps;
-	turning_data->sensor_data.lines_per_second = 30920;		// TBC
-	turning_data->sensor_data.exposure_time_max = max_expo; // TBC
-	turning_data->sensor_data.gain_max = 143 * 8192;		// TBC
-	turning_data->sensor_data.analog_gain_max = 143 * 8192; // TBC
+	turning_data->sensor_data.lines_per_second = vts * sensor_info->fps; // TBC
+	turning_data->sensor_data.exposure_time_max = max_expo;				 // TBC
+	turning_data->sensor_data.gain_max = 143 * 8192;					 // TBC
+	turning_data->sensor_data.analog_gain_max = 143 * 8192;				 // TBC
 	turning_data->sensor_data.digital_gain_max = 0;
 	turning_data->sensor_data.exposure_time_min = 1;			 // TBC
 	turning_data->sensor_data.exposure_time_long_max = max_expo; // TBC
@@ -283,24 +329,24 @@ void imx477_12MP_param_init(sensor_info_t *sensor_info, sensor_turning_data_t *t
 	turning_data->normal.line_p.max = max_expo;
 }
 
-void imx477_1080p_param_init(sensor_info_t *sensor_info, sensor_turning_data_t *turning_data)
-{
-	uint32_t max_expo = 1313;
-	turning_data->sensor_data.active_width = 1920;
-	turning_data->sensor_data.active_height = 1080;
-	turning_data->sensor_data.turning_type = 6;
-	turning_data->sensor_data.fps = sensor_info->fps;
-	turning_data->sensor_data.lines_per_second = 65650;		// TBC
-	turning_data->sensor_data.exposure_time_max = max_expo; // TBC
-	turning_data->sensor_data.gain_max = 143 * 8192;		// TBC
-	turning_data->sensor_data.analog_gain_max = 143 * 8192; // TBC
-	turning_data->sensor_data.digital_gain_max = 0 * 1024;
-	turning_data->sensor_data.exposure_time_min = 8;			 // TBC
-	turning_data->sensor_data.exposure_time_long_max = max_expo; // TBC
-	turning_data->normal.line_p.ratio = 256;
-	turning_data->normal.line_p.offset = 0;
-	turning_data->normal.line_p.max = max_expo;
-}
+// void imx477_1080p_param_init(sensor_info_t *sensor_info, sensor_turning_data_t *turning_data)
+// {
+// 	uint32_t max_expo = 1313;
+// 	turning_data->sensor_data.active_width = 1920;
+// 	turning_data->sensor_data.active_height = 1080;
+// 	turning_data->sensor_data.turning_type = 6;
+// 	turning_data->sensor_data.fps = sensor_info->fps;
+// 	turning_data->sensor_data.lines_per_second = 65650;		// TBC
+// 	turning_data->sensor_data.exposure_time_max = max_expo; // TBC
+// 	turning_data->sensor_data.gain_max = 143 * 8192;		// TBC
+// 	turning_data->sensor_data.analog_gain_max = 143 * 8192; // TBC
+// 	turning_data->sensor_data.digital_gain_max = 0 * 1024;
+// 	turning_data->sensor_data.exposure_time_min = 8;			 // TBC
+// 	turning_data->sensor_data.exposure_time_long_max = max_expo; // TBC
+// 	turning_data->normal.line_p.ratio = 256;
+// 	turning_data->normal.line_p.offset = 0;
+// 	turning_data->normal.line_p.max = max_expo;
+// }
 
 // turning data init
 int imx477_linear_data_init(sensor_info_t *sensor_info)
@@ -314,18 +360,21 @@ int imx477_linear_data_init(sensor_info_t *sensor_info)
 	memset(&turning_data, 0, sizeof(sensor_turning_data_t));
 
 	imx477_common_data_init(sensor_info, &turning_data);
-	switch (sensor_info->resolution)
-	{
-	case 1080:
-		imx477_1080p_param_init(sensor_info, &turning_data);
-		break;
-	case 3000:
-		imx477_12MP_param_init(sensor_info, &turning_data);
-		break;
-	default:
-		pr_err("resolution error!\n");
-		break;
-	}
+	imx477_param_init(sensor_info, &turning_data);
+	// switch (sensor_info->resolution)
+	// {
+	// case 1080:
+	// 	imx477_1080p_param_init(sensor_info, &turning_data);
+	// 	break;
+	// case 3000:
+	// 	imx477_12MP_param_init(sensor_info, &turning_data);
+	// 	break;
+
+	// default:
+	// imx477_1080p_param_init(sensor_info, &turning_data);
+	// 	//pr_err("resolution error!\n");
+	// 	break;
+	// }
 
 	// setting stream ctrl
 	turning_data.stream_ctrl.data_length = 1;
@@ -390,7 +439,7 @@ static int sensor_aexp_gain_control(hal_control_info_t *info, uint32_t mode, uin
 	{
 		printf("error while writing IMX477_AGAIN_REG_ADDR_LO!\n");
 	}
-	//printf("bus:%d,sensor_addr:0x%2x,reg_val:0x%2x,AGAIN_HI:0x%2x,AGAIN_LO:0x%2x\n", bus, sensor_addr, reg_val, hi, lo);
+	// printf("bus:%d,sensor_addr:0x%2x,reg_val:0x%2x,AGAIN_HI:0x%2x,AGAIN_LO:0x%2x\n", bus, sensor_addr, reg_val, hi, lo);
 	return 0;
 }
 

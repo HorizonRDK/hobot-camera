@@ -21,6 +21,9 @@
 #define OV5647_EXP_REG_ADDR (0x3500)
 #define OV5647_GAIN_ADDR_HI (0x350A)
 #define OV5647_GAIN_ADDR_LO (0x350B)
+#define OV5647_VTS_HI (0x380E)
+#define OV5647_VTS_LO (0x380F)
+
 #define MCLK (24000000)
 static int power_ref;
 int sensor_poweron(sensor_info_t *sensor_info)
@@ -100,14 +103,6 @@ int sensor_init(sensor_info_t *sensor_info)
 					 __LINE__, sensor_info->sensor_name);
 			return ret;
 		}
-
-		ret = ov5647_linear_data_init(sensor_info);
-		if (ret < 0)
-		{
-			pr_debug("%d : turning data init %s fail\n",
-					 __LINE__, sensor_info->sensor_name);
-			return ret;
-		}
 	}
 	else if (sensor_info->resolution == 1944)
 	{
@@ -125,10 +120,49 @@ int sensor_init(sensor_info_t *sensor_info)
 			return ret;
 		}
 	}
+	else if (sensor_info->resolution == 480)
+	{
+		setting_size =
+			sizeof(ov5647_2lane_480p_init_setting) / sizeof(uint32_t) / 2;
+		pr_debug("sensor_name %s, setting_size = %d\n",
+				 sensor_info->sensor_name, setting_size);
+		ret = camera_write_array(sensor_info->bus_num,
+								 sensor_info->sensor_addr, 2,
+								 setting_size, ov5647_2lane_480p_init_setting);
+		if (ret < 0)
+		{
+			pr_debug("%d : init %s fail\n",
+					 __LINE__, sensor_info->sensor_name);
+			return ret;
+		}
+	}
+	else if (sensor_info->resolution == 960)
+	{
+		setting_size =
+			sizeof(ov5647_2lane_960p_init_setting) / sizeof(uint32_t) / 2;
+		pr_debug("sensor_name %s, setting_size = %d\n",
+				 sensor_info->sensor_name, setting_size);
+		ret = camera_write_array(sensor_info->bus_num,
+								 sensor_info->sensor_addr, 2,
+								 setting_size, ov5647_2lane_960p_init_setting);
+		if (ret < 0)
+		{
+			pr_debug("%d : init %s fail\n",
+					 __LINE__, sensor_info->sensor_name);
+			return ret;
+		}
+	}
 	else
 	{
 		pr_err("config mode is err\n");
 		return -RET_ERROR;
+	}
+	ret = ov5647_linear_data_init(sensor_info);
+	if (ret < 0)
+	{
+		pr_debug("%d : turning data init %s fail\n",
+				 __LINE__, sensor_info->sensor_name);
+		return ret;
 	}
 	return ret;
 }
@@ -214,6 +248,37 @@ int sensor_deinit(sensor_info_t *sensor_info)
 	return ret;
 }
 #define MAX_EXPO 1100
+
+void ov5647_common_data_init(sensor_info_t *sensor_info, sensor_turning_data_t *turning_data)
+{
+	turning_data->bus_num = sensor_info->bus_num;
+	turning_data->bus_type = sensor_info->bus_type;
+	turning_data->port = sensor_info->port;
+	turning_data->reg_width = sensor_info->reg_width;
+	turning_data->mode = sensor_info->sensor_mode;
+	turning_data->sensor_addr = sensor_info->sensor_addr;
+	strncpy(turning_data->sensor_name, sensor_info->sensor_name,
+			sizeof(turning_data->sensor_name));
+	return;
+}
+
+void ov5647_normal_data_init(sensor_info_t *sensor_info, sensor_turning_data_t *turning_data)
+{
+	turning_data->sensor_data.active_width = sensor_info->width;
+	turning_data->sensor_data.active_height = sensor_info->height;
+	// turning sensor_data
+	turning_data->sensor_data.turning_type = 6;
+	int vts_hi = hb_i2c_read_reg16_data8(sensor_info->bus_num, sensor_info->sensor_addr, OV5647_VTS_HI);
+	int vts_lo = hb_i2c_read_reg16_data8(sensor_info->bus_num, sensor_info->sensor_addr, OV5647_VTS_LO);
+	uint32_t vts = vts_hi;
+	vts = vts << 8 | vts_lo;
+	//pr_err("vts_hi:0x%x,vts_lo:0x%x,vts:0x%x\n", vts_hi,vts_lo, vts);
+	turning_data->sensor_data.lines_per_second = vts * sensor_info->fps; // TBC
+	// turning_data.sensor_data.lines_per_second = 33120;	   // TBC
+	turning_data->sensor_data.exposure_time_max = vts;		// TBC
+	turning_data->sensor_data.exposure_time_long_max = vts; // TBC
+}
+
 // turning data init
 int ov5647_linear_data_init(sensor_info_t *sensor_info)
 {
@@ -226,25 +291,12 @@ int ov5647_linear_data_init(sensor_info_t *sensor_info)
 	memset(&turning_data, 0, sizeof(sensor_turning_data_t));
 
 	// common data
-	turning_data.bus_num = sensor_info->bus_num;
-	turning_data.bus_type = sensor_info->bus_type;
-	turning_data.port = sensor_info->port;
-	turning_data.reg_width = sensor_info->reg_width;
-	turning_data.mode = sensor_info->sensor_mode;
-	turning_data.sensor_addr = sensor_info->sensor_addr;
-	strncpy(turning_data.sensor_name, sensor_info->sensor_name,
-			sizeof(turning_data.sensor_name));
-	turning_data.sensor_data.active_width = 1920;
-	turning_data.sensor_data.active_height = 1080;
-	// turning sensor_data
-	turning_data.sensor_data.turning_type = 6;
-	turning_data.sensor_data.lines_per_second = 33120;	   // TBC
-	turning_data.sensor_data.exposure_time_max = MAX_EXPO; // TBC
+	ov5647_common_data_init(sensor_info, &turning_data);
+	ov5647_normal_data_init(sensor_info, &turning_data);
 	turning_data.sensor_data.gain_max = 128 * 8192;		   // TBC
-	turning_data.sensor_data.analog_gain_max = 128 * 8192;  // TBC
+	turning_data.sensor_data.analog_gain_max = 128 * 8192; // TBC
 	turning_data.sensor_data.digital_gain_max = 0;
-	turning_data.sensor_data.exposure_time_min = 1;				// TBC
-	turning_data.sensor_data.exposure_time_long_max = MAX_EXPO; // TBC
+	turning_data.sensor_data.exposure_time_min = 1;
 
 	turning_data.normal.s_line_length = 0;
 	// aGain
@@ -301,7 +353,6 @@ static int sensor_userspace_control(uint32_t port, uint32_t *enable)
 	// *enable = 0;
 	return 0;
 }
-
 
 static int sensor_aexp_line_control(hal_control_info_t *info, uint32_t mode, uint32_t *line, uint32_t line_num)
 {

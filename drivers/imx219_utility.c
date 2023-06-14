@@ -15,10 +15,14 @@
 #include <sys/mman.h>
 #include <linux/i2c-dev.h>
 #include "inc/hb_cam_utility.h"
+#include "inc/hb_i2c.h"
 #include "inc/imx219_setting.h"
 #include "inc/sensor_effect_common.h"
 #define MCLK (24000000)
-#define IMX219_EXP_REG_ADDR 0x015A
+#define IMX219_EXP_REG_ADDR_HI 0x015A
+#define IMX219_EXP_REG_ADDR_LO 0x015B
+#define IMX219_FRM_LENGTH_HI 0x0160
+#define IMX219_FRM_LENGTH_LO 0x0161
 #define IMX219_AGAIN_REG_ADDR 0x0157
 #define IMX219_DGAIN_REG_ADDR 0x0158
 static int power_ref;
@@ -108,6 +112,84 @@ int sensor_init(sensor_info_t *sensor_info)
 			return ret;
 		}
 	}
+	else if (sensor_info->resolution == 1232)
+	{
+
+		setting_size =
+			sizeof(imx219_1232p_init_setting) / sizeof(uint32_t) / 2;
+		pr_debug("sensor_name %s, setting_size = %d\n",
+				 sensor_info->sensor_name, setting_size);
+		ret = camera_write_array(sensor_info->bus_num,
+								 sensor_info->sensor_addr, 2,
+								 setting_size, imx219_1232p_init_setting);
+
+		if (ret < 0)
+		{
+			pr_debug("%d : init %s fail\n",
+					 __LINE__, sensor_info->sensor_name);
+			return ret;
+		}
+		ret = imx219_linear_data_init(sensor_info);
+		printf("jiale:imx219 turing tool\n");
+		if (ret < 0)
+		{
+			pr_debug("%d : turning data init %s fail\n",
+					 __LINE__, sensor_info->sensor_name);
+			return ret;
+		}
+	}
+	else if (sensor_info->resolution == 480)
+	{
+
+		setting_size =
+			sizeof(imx219_480p_init_setting) / sizeof(uint32_t) / 2;
+		pr_debug("sensor_name %s, setting_size = %d\n",
+				 sensor_info->sensor_name, setting_size);
+		ret = camera_write_array(sensor_info->bus_num,
+								 sensor_info->sensor_addr, 2,
+								 setting_size, imx219_480p_init_setting);
+
+		if (ret < 0)
+		{
+			pr_debug("%d : init %s fail\n",
+					 __LINE__, sensor_info->sensor_name);
+			return ret;
+		}
+		ret = imx219_linear_data_init(sensor_info);
+		printf("jiale:imx219 turing tool\n");
+		if (ret < 0)
+		{
+			pr_debug("%d : turning data init %s fail\n",
+					 __LINE__, sensor_info->sensor_name);
+			return ret;
+		}
+	}
+	else if (sensor_info->resolution == 2464)
+	{
+
+		setting_size =
+			sizeof(imx219_2464p_init_setting) / sizeof(uint32_t) / 2;
+		pr_debug("sensor_name %s, setting_size = %d\n",
+				 sensor_info->sensor_name, setting_size);
+		ret = camera_write_array(sensor_info->bus_num,
+								 sensor_info->sensor_addr, 2,
+								 setting_size, imx219_2464p_init_setting);
+
+		if (ret < 0)
+		{
+			pr_debug("%d : init %s fail\n",
+					 __LINE__, sensor_info->sensor_name);
+			return ret;
+		}
+		ret = imx219_linear_data_init(sensor_info);
+		printf("jiale:imx219 turing tool\n");
+		if (ret < 0)
+		{
+			pr_debug("%d : turning data init %s fail\n",
+					 __LINE__, sensor_info->sensor_name);
+			return ret;
+		}
+	}
 	else
 	{
 		pr_err("config mode is err\n");
@@ -166,7 +248,7 @@ int sensor_stop(sensor_info_t *sensor_info)
 }
 
 int sensor_poweroff(sensor_info_t *sensor_info)
-{
+{   
 	int ret = RET_OK;
 
 	if (sensor_info->power_mode)
@@ -198,6 +280,54 @@ int sensor_deinit(sensor_info_t *sensor_info)
 	}
 	return ret;
 }
+void imx219_commmon_data_init(sensor_info_t *sensor_info, sensor_turning_data_t *turning_data)
+{
+	// common data
+	turning_data->bus_num = sensor_info->bus_num;
+	turning_data->bus_type = sensor_info->bus_type;
+	turning_data->port = sensor_info->port;
+	turning_data->reg_width = sensor_info->reg_width;
+	turning_data->mode = sensor_info->sensor_mode;
+	turning_data->sensor_addr = sensor_info->sensor_addr;
+	strncpy(turning_data->sensor_name, sensor_info->sensor_name,
+			sizeof(turning_data->sensor_name));
+	// s_line means exposure related registers
+	turning_data->normal.s_line = IMX219_EXP_REG_ADDR_HI;
+	turning_data->normal.s_line_length = 2;
+	// aGain
+	turning_data->normal.again_control_num = 1;
+	turning_data->normal.again_control[0] = IMX219_AGAIN_REG_ADDR;
+	turning_data->normal.again_control_length[0] = 1;
+	// dGain
+	turning_data->normal.dgain_control_num = 0;
+	turning_data->normal.dgain_control[0] = 0;
+	turning_data->normal.dgain_control_length[0] = 0;
+}
+void imx219_param_data_init(sensor_info_t *sensor_info, sensor_turning_data_t *turning_data)
+{
+
+	int vts_hi = hb_i2c_read_reg16_data8(sensor_info->bus_num, sensor_info->sensor_addr, IMX219_FRM_LENGTH_HI);
+	int vts_lo = hb_i2c_read_reg16_data8(sensor_info->bus_num, sensor_info->sensor_addr, IMX219_FRM_LENGTH_LO);
+	uint32_t vts = vts_hi;
+	vts = vts << 8 | vts_lo;
+	pr_err("vts_hi:0x%x,vts_lo:0x%x,vts:0x%x\n", vts_hi, vts_lo, vts);
+	turning_data->sensor_data.active_width = sensor_info->width;
+	turning_data->sensor_data.active_height = sensor_info->height;
+	// turning sensor_data
+	turning_data->sensor_data.conversion = 1;
+	turning_data->sensor_data.turning_type = 6;
+	turning_data->sensor_data.lines_per_second = vts * sensor_info->fps;	   // TBC
+	turning_data->sensor_data.exposure_time_max = vts;	   // TBC
+	turning_data->sensor_data.gain_max = 109 * 8192;		   // TBC
+	turning_data->sensor_data.analog_gain_max = 109 * 8192; // TBC
+	turning_data->sensor_data.digital_gain_max = 0;
+	turning_data->sensor_data.exposure_time_min = 1;			// TBC
+	turning_data->sensor_data.exposure_time_long_max = vts; // TBC
+	//   turning normal
+	turning_data->normal.line_p.ratio = 256;
+	turning_data->normal.line_p.offset = 0;
+	turning_data->normal.line_p.max = vts;
+}
 // turning data init
 int imx219_linear_data_init(sensor_info_t *sensor_info)
 {
@@ -208,45 +338,8 @@ int imx219_linear_data_init(sensor_info_t *sensor_info)
 	uint32_t *stream_off = turning_data.stream_ctrl.stream_off;
 
 	memset(&turning_data, 0, sizeof(sensor_turning_data_t));
-
-	// common data
-	turning_data.bus_num = sensor_info->bus_num;
-	turning_data.bus_type = sensor_info->bus_type;
-	turning_data.port = sensor_info->port;
-	turning_data.reg_width = sensor_info->reg_width;
-	turning_data.mode = sensor_info->sensor_mode;
-	turning_data.sensor_addr = sensor_info->sensor_addr;
-	strncpy(turning_data.sensor_name, sensor_info->sensor_name,
-			sizeof(turning_data.sensor_name));
-	turning_data.sensor_data.active_width = 1920;
-	turning_data.sensor_data.active_height = 1080;
-	// turning sensor_data
-	turning_data.sensor_data.conversion = 1;
-	turning_data.sensor_data.turning_type = 6;
-	turning_data.sensor_data.lines_per_second = 52230;	   // TBC
-	turning_data.sensor_data.exposure_time_max = 1736;	   // TBC
-	turning_data.sensor_data.gain_max = 109 * 8192;		   // TBC
-	turning_data.sensor_data.analog_gain_max = 109 * 8192; // TBC
-	turning_data.sensor_data.digital_gain_max = 0;
-	turning_data.sensor_data.exposure_time_min = 1;		// TBC
-	turning_data.sensor_data.exposure_time_long_max = 1736; // TBC
-	//   turning normal
-	turning_data.normal.line_p.ratio = 256;
-	turning_data.normal.line_p.offset = 0;
-	turning_data.normal.line_p.max = 1736;
-
-	// s_line means exposure related registers
-	turning_data.normal.s_line = IMX219_EXP_REG_ADDR;
-	turning_data.normal.s_line_length = 2;
-	// aGain
-	turning_data.normal.again_control_num = 1;
-	turning_data.normal.again_control[0] = IMX219_AGAIN_REG_ADDR;
-	turning_data.normal.again_control_length[0] = 1;
-	// dGain
-	turning_data.normal.dgain_control_num = 0;
-	turning_data.normal.dgain_control[0] = 0;
-	turning_data.normal.dgain_control_length[0] = 0;
-
+	imx219_commmon_data_init(sensor_info,&turning_data);
+	imx219_param_data_init(sensor_info,&turning_data);
 	// setting stream ctrl
 	turning_data.stream_ctrl.data_length = 1;
 	if (sizeof(turning_data.stream_ctrl.stream_on) >= sizeof(imx219_stream_on_setting))
