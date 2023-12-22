@@ -104,7 +104,7 @@ int sensor_init(sensor_info_t *sensor_info)
 			return ret;
 		}
 		ret = imx219_linear_data_init(sensor_info);
-		printf("jiale:imx219 turing tool\n");
+		pr_info("IMX219: turing tool inited\n");
 		if (ret < 0)
 		{
 			pr_debug("%d : turning data init %s fail\n",
@@ -130,7 +130,7 @@ int sensor_init(sensor_info_t *sensor_info)
 			return ret;
 		}
 		ret = imx219_linear_data_init(sensor_info);
-		printf("jiale:imx219 turing tool\n");
+		pr_info("IMX219: turing tool inited\n");
 		if (ret < 0)
 		{
 			pr_debug("%d : turning data init %s fail\n",
@@ -156,7 +156,7 @@ int sensor_init(sensor_info_t *sensor_info)
 			return ret;
 		}
 		ret = imx219_linear_data_init(sensor_info);
-		printf("jiale:imx219 turing tool\n");
+		pr_info("IMX219: turing tool inited\n");
 		if (ret < 0)
 		{
 			pr_debug("%d : turning data init %s fail\n",
@@ -182,7 +182,7 @@ int sensor_init(sensor_info_t *sensor_info)
 			return ret;
 		}
 		ret = imx219_linear_data_init(sensor_info);
-		printf("jiale:imx219 turing tool\n");
+		pr_info("IMX219: turing tool inited\n");
 		if (ret < 0)
 		{
 			pr_debug("%d : turning data init %s fail\n",
@@ -203,7 +203,7 @@ int sensor_start(sensor_info_t *sensor_info)
 {
 	int ret = RET_OK;
 	int setting_size = 0;
-	printf("jiale:start streaming...\n");
+	pr_info("IMX219: start streaming...\n");
 	setting_size =
 		sizeof(imx219_stream_on_setting) / sizeof(uint32_t) / 2;
 	pr_debug("sensor_name %s, setting_size = %d\n",
@@ -310,7 +310,7 @@ void imx219_param_data_init(sensor_info_t *sensor_info, sensor_turning_data_t *t
 	int vts_lo = hb_i2c_read_reg16_data8(sensor_info->bus_num, sensor_info->sensor_addr, IMX219_FRM_LENGTH_LO);
 	uint32_t vts = vts_hi;
 	vts = vts << 8 | vts_lo;
-	pr_err("vts_hi:0x%x,vts_lo:0x%x,vts:0x%x\n", vts_hi, vts_lo, vts);
+	pr_info("IMX219: vts_hi:0x%x,vts_lo:0x%x,vts:0x%x\n", vts_hi, vts_lo, vts);
 	turning_data->sensor_data.active_width = sensor_info->width;
 	turning_data->sensor_data.active_height = sensor_info->height;
 	// turning sensor_data

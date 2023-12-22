@@ -210,7 +210,7 @@ int sensor_start(sensor_info_t *sensor_info)
 {
 	int ret = RET_OK;
 	int setting_size = 0;
-	printf("jiale:start streaming...\n");
+	pr_info("IMX477: start streaming...\n");
 	setting_size =
 		sizeof(imx477_stream_on_setting) / sizeof(uint32_t) / 2;
 	pr_debug("sensor_name %s, setting_size = %d\n",
@@ -232,7 +232,7 @@ int sensor_stop(sensor_info_t *sensor_info)
 	int setting_size = 0;
 	setting_size =
 		sizeof(imx477_stream_off_setting) / sizeof(uint32_t) / 2;
-	printf("sensor_name %s, setting_size = %d\n",
+	pr_info("sensor_name %s, setting_size = %d\n",
 		   sensor_info->sensor_name, setting_size);
 	ret = camera_write_array(sensor_info->bus_num,
 							 sensor_info->sensor_addr, 2,
@@ -311,7 +311,7 @@ void imx477_param_init(sensor_info_t *sensor_info, sensor_turning_data_t *turnin
 	int vts_lo = hb_i2c_read_reg16_data8(sensor_info->bus_num, sensor_info->sensor_addr, IMX477_FRM_LENGTH_LO);
 	uint32_t vts = vts_hi;
 	vts = vts << 8 | vts_lo;
-	pr_err("vts_hi:0x%x,vts_lo:0x%x,vts:0x%x\n", vts_hi, vts_lo, vts);
+	pr_info("IMX477: vts_hi:0x%x,vts_lo:0x%x,vts:0x%x\n", vts_hi, vts_lo, vts);
 	uint32_t max_expo = vts;
 	turning_data->sensor_data.active_width = sensor_info->width;
 	turning_data->sensor_data.active_height = sensor_info->height;
