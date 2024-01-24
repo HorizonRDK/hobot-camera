@@ -27,21 +27,21 @@
 
 int sensor_reset(sensor_info_t *sensor_info)
 {
-        pr_info( "sensor_reset gpio_num %d", sensor_info->gpio_num ); 
+	pr_info( "sensor_reset gpio_num %d", sensor_info->gpio_num );
 	int gpio, ret = RET_OK;
 	// if(sensor_info->power_mode) {
 	if( 1 ) {
 		for(gpio = 0; gpio < sensor_info->gpio_num; gpio++) {
 			if(sensor_info->gpio_pin[gpio] >= 0) {
 				pr_debug("gpio_num %d  %d %d %d \n", sensor_info->gpio_num,
-                        sensor_info->gpio_pin[gpio],
-                        sensor_info->gpio_level[gpio],
-                        sensor_info->gpio_level[gpio]);
+					sensor_info->gpio_pin[gpio],
+					sensor_info->gpio_level[gpio],
+					sensor_info->gpio_level[gpio]);
 				ret = camera_power_ctrl(sensor_info->gpio_pin[gpio],
-                                        sensor_info->gpio_level[gpio]);
+					sensor_info->gpio_level[gpio]);
 				usleep(sensor_info->power_delay *1000);
 				ret |= camera_power_ctrl(sensor_info->gpio_pin[gpio],
-                                        1-sensor_info->gpio_level[gpio]);
+					1-sensor_info->gpio_level[gpio]);
 				if(ret < 0) {
 					pr_err("camera_power_ctrl fail\n");
 					return -HB_CAM_SENSOR_POWERON_FAIL;
@@ -125,15 +125,15 @@ int sensor_turning_data_init(sensor_info_t *sensor_info)
 	sensor_4M_param_init(sensor_info, &turning_data);
 
 	turning_data.normal.again_control_num = 0;
-        turning_data.normal.dgain_control_num = 0;
-        turning_data.normal.s_line_length = 0;
+	turning_data.normal.dgain_control_num = 0;
+	turning_data.normal.s_line_length = 0;
 
 	ret = sensor_stream_control_set(&turning_data);
 	if (ret < 0) {
 		pr_err("sensor_stream_control_set fail %d\n", ret);
 		return -RET_ERROR;
 	}
-  
+
 	ret = ioctl(sensor_info->sen_devfd, SENSOR_TURNING_PARAM, &turning_data);
 	if (ret < 0) {
 		pr_err("sensor_%d ioctl fail %d\n", ret);
@@ -184,28 +184,14 @@ int sensor_mode_config_init(sensor_info_t *sensor_info)
 int sensor_init(sensor_info_t *sensor_info)
 {
 	int ret = RET_OK;
-	char str[12] = {0};
 
-	snprintf(str, sizeof(str), "/dev/port_%d", sensor_info->dev_port);
-	if(sensor_info->sen_devfd <= 0) {
-		if ((sensor_info->sen_devfd = open(str, O_RDWR)) < 0) {
-			pr_err("port_%d open fail\n", sensor_info->port);
-			return -RET_ERROR;
-		}
-	}
-	pr_info("/dev/port_%d success sensor_info->sen_devfd %d===\n",
-		sensor_info->dev_port, sensor_info->sen_devfd);
-
-/*
-	ret = sensor_reset(sensor_info);
-	if (ret < 0) {
-		pr_err("%d : reset %s fail\n", __LINE__, sensor_info->sensor_name);
-		return -RET_ERROR;
-	}
-*/
 	ret = sensor_mode_config_init(sensor_info);
-	if (ret < 0)
+	if (ret < 0) {
 		pr_err("%d : init %s fail\n", __LINE__, sensor_info->sensor_name);
+		return ret;
+	}
+
+	pr_info("gc4663 config success\n");
 	return ret;
 }
 
@@ -234,7 +220,6 @@ int sensor_stop(sensor_info_t *sensor_info)
 	int setting_size = 0, i;
 	int ret = RET_OK;
 
-	// sleep(50);
 	setting_size = sizeof(gc4663_stream_off_setting)/sizeof(uint32_t)/2;
 	pr_info("%s sensor_stop setting_size %d\n",
 		sensor_info->sensor_name, setting_size);
@@ -251,40 +236,15 @@ int sensor_stop(sensor_info_t *sensor_info)
 }
 int sensor_deinit(sensor_info_t *sensor_info)
 {
-	int ret = RET_OK;
-	int gpio;
-
-	// sleep(50);
-	// if(sensor_info->power_mode) {
-	if( 0 ) {
-		for(gpio = 0; gpio < sensor_info->gpio_num; gpio++) {
-			if(sensor_info->gpio_pin[gpio] != -1) {
-				ret = camera_power_ctrl(sensor_info->gpio_pin[gpio],
-                                        sensor_info->gpio_level[gpio]);
-				if(ret < 0) {
-					pr_err("camera_power_ctrl fail\n");
-					return -HB_CAM_SENSOR_POWERON_FAIL;
-				}
-			}
-		}
-	}
-	if (sensor_info->sen_devfd != 0) {
-		close(sensor_info->sen_devfd);
-		sensor_info->sen_devfd = -1;
-	} else {
-            pr_info( "gc4663:  sensor_info->sen_devfd == 0 \n"); 
-        }
-	return ret;
+	return RET_OK;
 }
 
 static int sensor_aexp_gain_control(hal_control_info_t *info, uint32_t mode, uint32_t *again, uint32_t *dgain, uint32_t gain_num)
 {
-        // return 0;
-        // printf("%s %s mode:%d gain_num:%d again[0]:%d, dgain[0]:%d\n", __FILE__, __FUNCTION__, mode, gain_num, again[0], dgain[0]);
-        int bus = info->bus_num;
-        int sensor_addr = info->sensor_addr;
+	int bus = info->bus_num;
+	int sensor_addr = info->sensor_addr;
 
-        uint32_t gain = again[0];
+	uint32_t gain = again[0];
 	uint32_t i;
 	uint32_t total;
 	uint32_t tol_dig_gain = 0;
@@ -293,62 +253,54 @@ static int sensor_aexp_gain_control(hal_control_info_t *info, uint32_t mode, uin
 	if (gain > 190) {
 		gain = 190;
 	}
-        gain = analog_gain_ratio[gain];
+	gain = analog_gain_ratio[gain];
 
 	total = sizeof(analog_gain_table) / sizeof( uint32_t );
 	for(i = 0; i < total - 1 ; i++)
 	{
-	  if((analog_gain_table[i] <= gain)&&(gain < analog_gain_table[i+1]))
-	    break;
+		if((analog_gain_table[i] <= gain)&&(gain < analog_gain_table[i+1]))
+		break;
 	}
 	tol_dig_gain = gain * 64 / analog_gain_table[i];
 
-        // printf("gc4663 gain, gain= %d, i= %d, tol_dig_gain=%d \n", gain, i, tol_dig_gain);
-        hb_i2c_write_reg16_data8( bus, sensor_addr, 0x2b3, regValTable[i][0]);
-        hb_i2c_write_reg16_data8( bus, sensor_addr, 0x2b4, regValTable[i][1]);
-        hb_i2c_write_reg16_data8( bus, sensor_addr, 0x2b8, regValTable[i][2]);
-        hb_i2c_write_reg16_data8( bus, sensor_addr, 0x2b9, regValTable[i][3]);
-        hb_i2c_write_reg16_data8( bus, sensor_addr, 0x515, regValTable[i][4]);
-        hb_i2c_write_reg16_data8( bus, sensor_addr, 0x519, regValTable[i][5]);
-        hb_i2c_write_reg16_data8( bus, sensor_addr, 0x2d9, regValTable[i][6]);
-        hb_i2c_write_reg16_data8( bus, sensor_addr, 0x20e, (tol_dig_gain>>6));
-        hb_i2c_write_reg16_data8( bus, sensor_addr, 0x20f, ((tol_dig_gain&0x3f)<<2));
+	// printf("gc4663 gain, gain= %d, i= %d, tol_dig_gain=%d \n", gain, i, tol_dig_gain);
+	hb_i2c_write_reg16_data8( bus, sensor_addr, 0x2b3, regValTable[i][0]);
+	hb_i2c_write_reg16_data8( bus, sensor_addr, 0x2b4, regValTable[i][1]);
+	hb_i2c_write_reg16_data8( bus, sensor_addr, 0x2b8, regValTable[i][2]);
+	hb_i2c_write_reg16_data8( bus, sensor_addr, 0x2b9, regValTable[i][3]);
+	hb_i2c_write_reg16_data8( bus, sensor_addr, 0x515, regValTable[i][4]);
+	hb_i2c_write_reg16_data8( bus, sensor_addr, 0x519, regValTable[i][5]);
+	hb_i2c_write_reg16_data8( bus, sensor_addr, 0x2d9, regValTable[i][6]);
+	hb_i2c_write_reg16_data8( bus, sensor_addr, 0x20e, (tol_dig_gain>>6));
+	hb_i2c_write_reg16_data8( bus, sensor_addr, 0x20f, ((tol_dig_gain&0x3f)<<2));
 
-        return 0;
+	return 0;
 }
 
 static int sensor_aexp_line_control(hal_control_info_t *info, uint32_t mode, uint32_t *line, uint32_t line_num)
 {
-    // return 0;
-        // printf("%s %s mode:%d line_num:%d line[0]:%d\n", __FILE__, __FUNCTION__, mode, line_num, line[0]);
-// extern int camera_i2c_write8(int bus, int reg_width, int sensor_addr, uint32_t reg_addr, uint8_t value); 
-        int bus = info->bus_num;
-        int sensor_addr = info->sensor_addr;
-        char temp = 0, temp1 = 0, temp2 = 0; 
-        uint32_t sline = line[0];
-        if ( sline > 1480) { sline = 1480; }
-        if ( sline < 5) { sline = 5; }
+	int bus = info->bus_num;
+	int sensor_addr = info->sensor_addr;
+	char temp = 0, temp1 = 0, temp2 = 0;
+	uint32_t sline = line[0];
+	if ( sline > 1480) { sline = 1480; }
+	if ( sline < 5) { sline = 5; }
 
 	temp1 = ((sline) >> 8) & 0xff;
-        // camera_i2c_write8( bus, 16, sensor_addr, 0x202, temp1);
-        hb_i2c_write_reg16_data8( bus, sensor_addr, 0x202, temp1);
+	hb_i2c_write_reg16_data8( bus, sensor_addr, 0x202, temp1);
 	temp2 = (sline & 0xff);
-        // camera_i2c_write8( bus, 16, sensor_addr, 0x203, temp2);
-        hb_i2c_write_reg16_data8( bus, sensor_addr, 0x203, temp2);
+	hb_i2c_write_reg16_data8( bus, sensor_addr, 0x203, temp2);
 
-        // printf(" bus=%d, sensor_addr=%02X \n", bus, sensor_addr );
-        // printf("_line_control 0x202 0x203: %02X, %02X\n", temp1, temp2);
-    return 0;
+	return 0;
 }
 
 
 static int sensor_userspace_control(uint32_t port, uint32_t *enable)
 {
-        *enable |= (HAL_GAIN_CONTROL | HAL_LINE_CONTROL);
-        // *enable = 0;
-        return 0;
+	*enable |= (HAL_GAIN_CONTROL | HAL_LINE_CONTROL);
+	// *enable = 0;
+	return 0;
 }
-       
 
 sensor_module_t gc4663 = {
 	.module = "gc4663",
@@ -356,8 +308,7 @@ sensor_module_t gc4663 = {
 	.start = sensor_start,
 	.stop = sensor_stop,
 	.deinit = sensor_deinit,
-        .aexp_gain_control = sensor_aexp_gain_control,
-        .aexp_line_control = sensor_aexp_line_control,
-        .userspace_control = sensor_userspace_control,
+	.aexp_gain_control = sensor_aexp_gain_control,
+	.aexp_line_control = sensor_aexp_line_control,
+	.userspace_control = sensor_userspace_control,
 };
-
